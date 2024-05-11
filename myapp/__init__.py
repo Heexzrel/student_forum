@@ -1,5 +1,5 @@
 # __init__.py
-from flask import Flask, request, redirect, url_for
+from flask import Flask, redirect, url_for
 from flask_security import Security, SQLAlchemyUserDatastore
 from .models import db, User, Role
 
