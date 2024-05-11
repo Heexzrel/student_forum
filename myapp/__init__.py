@@ -16,15 +16,17 @@ def create_app():
     user_datastore = SQLAlchemyUserDatastore(db, User, Role)
     security = Security(app, user_datastore)
 
-    @app.route('/register', methods=['POST'])
-    def register_post():
-        email = request.form.get('email')
-        username = request.form.get('username')
-        password = request.form.get('password')
-        user = User(email=email, username=username)
-        user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
-        return redirect(url_for('security.login'))
+    @app.route('/register', methods=['GET', 'POST'])
+    def register():
+        if request.method == 'POST'
+            email = request.form.get('email')
+            username = request.form.get('username')
+            password = request.form.get('password')
+            user = User(email=email, username=username)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+            return redirect(url_for('security.login'))
+        return render_template('register.html')
 
     return app
