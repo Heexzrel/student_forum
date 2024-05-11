@@ -18,7 +18,7 @@ def create_app():
 
     @app.route('/register', methods=['GET', 'POST'])
     def register():
-        if request.method == 'POST'
+        if request.method == 'POST':
             email = request.form.get('email')
             username = request.form.get('username')
             password = request.form.get('password')
