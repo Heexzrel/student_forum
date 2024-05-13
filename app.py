@@ -40,9 +40,8 @@ def login():
             login_user(user, remember=request.form.get('remember'))
             return redirect(url_for('profile'))
         else:
-            flash('Invalid username or password.', 'error')  # Flash error message
-     
-     return render_template('login.html')
+            flash('Invalid username or password.', 'error')  # Flash error message           
+    return render_template('login.html')
 
 
 # Registration
