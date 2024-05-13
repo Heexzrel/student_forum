@@ -51,24 +51,24 @@ def register():
         email = request.form['email']
         username = request.form['username']
         password = request.form['password']
+    
+        # Check for existing user
+         existing_user = User.query.filter_any(email=email, username=username).first()
+        if existing_user:
+            if existing_user.email == email:
+                flash('Email address already in use.', 'error')
+            elif existing_user.username == username:
+                flash('Username already in use.', 'error')
+        else:
+            #hash password and create user
+            hashed_password = generate_password_hash(password)
+            new_user = User(email=email, username=username, password_hash=hashed_password)
+            db.session.add(new_user)
+            db.session.commit()
 
-# Check for existing user
-existing_user = User.query.filter_any(email=email, username=username).first()
-if existing_user:
-    if existing_user.email == email:
-        flash('Email address already in use.', 'error')
-    elif existing_user.username == username:
-        flash('Username already in use.', 'error')
-    return render_template('register.html')
+    flash('Registration successful! Please login.', 'success')
+    return redirect(url_for('login'))
 
-# Hash password and create user
-hashed_password = generate_password_hash(password)
-new_user = User(email=email, username=username, password_hash=hashed_password)
-db.session.add(new_user)
-db.session.commit()
-
-flash('Registration successful! Please login.', 'success')
-return redirect(url_for('login'))
 return render_template('register.html')
 
 
