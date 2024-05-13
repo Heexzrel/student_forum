@@ -70,7 +70,6 @@ db.session.commit()
 
 flash('Registration successful! Please login.', 'success')
 return redirect(url_for('login'))
-
 return render_template('register.html')
 
 
