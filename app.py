@@ -53,7 +53,7 @@ def register():
         password = request.form['password']
     
         # Check for existing user
-         existing_user = User.query.filter_any(email=email, username=username).first()
+        existing_user = User.query.filter_any(email=email, username=username).first()
         if existing_user:
             if existing_user.email == email:
                 flash('Email address already in use.', 'error')
