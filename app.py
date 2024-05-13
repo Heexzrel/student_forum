@@ -59,7 +59,8 @@ if existing_user:
         flash('Email address already in use.', 'error')
     elif existing_user.username == username:
         flash('Username already in use.', 'error')
-        return render_template('register.html')
+
+    return render_template('register.html')
 
 # Hash password and create user
 hashed_password = generate_password_hash(password)
