@@ -68,8 +68,7 @@ def register():
 
     flash('Registration successful! Please login.', 'success')
     return redirect(url_for('login'))
-
-return render_template('register.html')
+    return render_template('register.html')
 
 
 # Profile (require the user to login)
