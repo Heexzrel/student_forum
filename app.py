@@ -9,10 +9,10 @@ from flask_sqlalchemy import SQLAlchemy
 app = Flask(__name__)
 
 # Configuration settings
-# app.config.update(
+app.config.update(
 #     SECRET_KEY='your_strong_secret_key',  
-#     SQLALCHEMY_DATABASE_URI='sqlite:///student_forum.db'  
-# )
+    SQLALCHEMY_DATABASE_URI='sqlite:///student_forum.db'  
+    )
 
 #database
 db = SQLAlchemy(app)
