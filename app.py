@@ -28,6 +28,11 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
+#displays content for the root path
+@app.route('/')
+def index():
+        return render_template('index.html')
+
 # Login 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
