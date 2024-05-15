@@ -10,7 +10,7 @@ app = Flask(__name__)
 
 # Configuration settings
 app.config.update(
-#     SECRET_KEY='your_strong_secret_key',  
+    SECRET_KEY='opeYEMIisy1',  
     SQLALCHEMY_DATABASE_URI='sqlite:///student_forum.db',
     TEMPLATES_AUTO_RELOAD=True
     )
