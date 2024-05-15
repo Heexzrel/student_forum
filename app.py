@@ -30,7 +30,7 @@ def load_user(user_id):
 
 
 #displays content for the root path
-@app.route('/')
+@app.route('/templates')
 def index():
         return render_template('index.html')
 
