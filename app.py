@@ -1,6 +1,6 @@
 #main codes to run the application
 
-from flask import Flask, flash, render_template, redirect, url_for
+from flask import Flask, flash, render_template, redirect, url_for, request
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
