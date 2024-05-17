@@ -37,7 +37,7 @@ configure_uploads(app, photos)
 
 
 #displays content for the root path
-@app.route('/templates')
+@app.route('/')
 def index():
         return render_template('index.html')
 
