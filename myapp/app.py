@@ -5,6 +5,7 @@ from flask_login import LoginManager, login_user, logout_user, current_user, log
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from flask_uploads import UploadSet, IMAGES, configure_uploads
+from flask_mail import Mail, Message
 from models import User
 
 #Flask application instance
@@ -14,12 +15,20 @@ app = Flask(__name__)
 app.config.update(
     SECRET_KEY='opeYEMIisy1',  
     SQLALCHEMY_DATABASE_URI='sqlite:///student_forum.db',
-    TEMPLATES_AUTO_RELOAD=True
-    UPLOADED_PHOTOS_DEST='uploads/photos'
-    )
+    TEMPLATES_AUTO_RELOAD=True,
+    UPLOADED_PHOTOS_DEST='uploads/photos',
+    MAIL_SERVER='smtp.gmail.com',
+    MAIL_PORT=465,
+    MAIL_USE_SSL=True,
+    MAIL_USERNAME='georgeisrael18@gmail.com',
+    MAIL_PASSWORD='opeYEMIisy1'
+)
 
 #database
 db = SQLAlchemy(app)
+
+# mail config
+mail = Mail(app)
 
 # Login Manager configuration
 login_manager = LoginManager()
@@ -36,10 +45,27 @@ photos = UploadSet('photos', IMAGES)
 configure_uploads(app, photos)
 
 
+def send_password_reset_email(user, token):
+    subject = 'Request Your Password'
+    sender = 'noreply@demo.com'
+    recipient = user.email
+    mail_body = f'''To reset your password, click on the following link:
+{url_for('reset_password', token=token, _external=True)}
+
+If you did not make this request, ignore this email.
+'''
+    message = Message(subject, sender=sender, recipients=[recipient])
+    message.body = mail_body
+    mail.send(message)
+
+
+
+
 #displays content for the root path
 @app.route('/')
 def index():
         return render_template('index.html')
+
 
 # Login route
 @app.route('/login', methods=['GET', 'POST'])
@@ -97,7 +123,8 @@ def reset_password_request():
     if request.method == 'POST':
         user = User.query.filter_by(email=request.form['email']).first()
         if user:
-            token = user.get_reset_token()
+            token = user.get_reset_password_token()
+            send_password_reset_email(user, token)
             flash(f"An email has been sent to {user.email} with instructions to reset your password.", 'info')
         else:
             flash('Email address not found.', 'error')
