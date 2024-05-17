@@ -59,8 +59,6 @@ If you did not make this request, ignore this email.
     mail.send(message)
 
 
-
-
 #displays content for the root path
 @app.route('/')
 def index():
