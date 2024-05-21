@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from flask_uploads import UploadSet, IMAGES, configure_uploads
 from flask_mail import Mail, Message
-from models import User
+from models import User, Note
 
 #Flask application instance
 app = Flask(__name__)
@@ -45,6 +45,7 @@ photos = UploadSet('photos', IMAGES)
 configure_uploads(app, photos)
 
 
+# Password reset email fuction
 def send_password_reset_email(user, token):
     subject = 'Request Your Password'
     sender = 'noreply@demo.com'
@@ -158,6 +159,7 @@ def upload_picture():
         return redirect(url_for('profile'))
     return render_template('upload_picture.html')
 
+
 # Logout 
 @app.route('/logout')
 @login_required
@@ -166,8 +168,58 @@ def logout():
     return redirect(url_for('login'))
 
 
+@app.route('/note/create', methods=['GET', 'POST'])
+@login_required
+def create_note():
+    if request.method == 'POST':
+        title = request.form['title']
+        content = request.form['content']
+        new_note = Note(title=title, content=content, user_id=current_user.id)
+        db.session.add(new_note)
+        db.session.commit()
+        flash('Note created successfully.', 'success')
+        return redirect(url_for('profile'))
+    return render_template('create_note.html')
+
+
+@app.route('/note/<int:note_id>')
+@login_required
+def view_note(note_id):
+    note = Note.query.get(note_id)
+    if note.user_id != current_user.id:
+        flash('You are not authorized to view this note.', 'error')
+    return render_template('view_note.html', note=note)
+
+
+@app.route('/note/<int:note_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_note(note_id):
+    note = Note.query.get(note_id)
+    if note.user_id != current_user.id:
+        flash('You are not authorized to edit this note.', 'error')
+        return redirect(url_for('view_note', note_id=note.id))
+    if request.method == 'POST':
+        note.content = request.form['content']
+        db.session.commit()
+        flash('Your note has been updated successfully.')
+        return redirect(url_for('view_note', note_id=note.id))
+    return render_template('edit_note.html', note=note)
+
+
+@app.route('/note/<int:note_id>/delete', methods=['POST'])
+@login_required
+def delete_note(note_id):
+    note = Note.query.get(note_id)
+    if note.user_id != current_user.id:
+        flash('You are not authorized to delete this note.', 'error')
+    db.session.delete(note)
+    db.session.commit()
+    flash('Note deleted successfully.')
+    return redirect(url_for('index'))
+
 #development server for running the application
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()  # Create database tables (if it's not available)
         app.run(debug=True)
+
