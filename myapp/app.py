@@ -1,15 +1,19 @@
 #main codes to run the application
 
-from flask import Flask, flash, render_template, redirect, url_for, request
+from crypt import methods
+from flask import Flask, flash, jsonify, redirect, url_for, request
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
 from flask_uploads import UploadSet, IMAGES, configure_uploads
 from flask_mail import Mail, Message
+from flask_cors import CORS
 from models import User, Note
 
 #Flask application instance
 app = Flask(__name__)
+CORS(app)
 
 # Configuration settings
 app.config.update(
@@ -45,6 +49,7 @@ photos = UploadSet('photos', IMAGES)
 configure_uploads(app, photos)
 
 
+
 # Password reset email fuction
 def send_password_reset_email(user, token):
     subject = 'Request Your Password'
@@ -60,162 +65,197 @@ If you did not make this request, ignore this email.
     mail.send(message)
 
 
-#displays content for the root path
-@app.route('/')
+# displays content for the root path
+@app.route('/', methods=['GET'])
 def index():
-        return render_template('index.html')
+    data = {
+        "message": "Welcome to the Smart Student!"
+    } 
+    return jsonify(data)
 
 
 # Login route
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/login', methods=['POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('profile'))  # Redirect to profile if already logged in
+        return jsonify({
+            "message": "You are already logged in.",
+            "redirect": url_for('profile')
+        })
+           
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+    if not email or not password:
+        return jsonify({"message": "Email and password are required."})
     
-    if request.method == 'POST':
-        user = User.query.filter_by(email=request.form['email']).first()
-        if user and user.verify_password(request.form['password']):
-            login_user(user, remember=request.form.get('remember'))
-            return redirect(url_for('profile'))
-        else:
-            flash('Invalid username or password.', 'error')  # Flash error message           
-    return render_template('login.html')
-
+    user = User.query.filter_by(email=email).first()
+    if user and check_password_hash(User.password_hash, password):
+        login_user(User, remember=True)
+        return jsonify({
+            "message": "Login successful.",
+            "redirect": url_for('profile')})
+    else:
+        return jsonify({"message": "Invalid username or password."})
+    
 
 # Registration route
-@app.route('/register', methods=['GET', 'POST'])
+@app.route('/register', methods=['POST'])
 def register():
-    if request.method == 'POST':
-        email = request.form['email']
-        username = request.form['username']
-        password = request.form['password']
+    data = request.get_json()
+    email = data.get('email')
+    username = data.get('username')
+    password = data.get('password')
+    if not email or not username or not password:
+        return jsonify({"message": "All fields are required."})
     
-        # Check for existing user
-        existing_user = User.query.filter_any(email=email, username=username).first()
-        if existing_user:
-            if existing_user.email == email:
-                flash('Email address already in use.', 'error')
-            elif existing_user.username == username:
-                flash('Username already in use.', 'error')
-        else:
-            #hash password and create user
-            hashed_password = generate_password_hash(password)
-            new_user = User(email=email, username=username, password_hash=hashed_password)
-            db.session.add(new_user)
-            db.session.commit()
+    # Check for existing user
+    existing_user = User.query.filter((User.email == email) | (User.username == username))
+    if existing_user:
+        return jsonify({"message": "User already exists."})
+    
+    # Hash password and create user
+    hashed_password = generate_password_hash(password)
+    new_user = User(email=email, username=username, password_hash=hashed_password)
+    db.session.add(new_user)
+    db.session.commit()
 
-    flash('Registration successful! Please login.', 'success')
-    return redirect(url_for('login'))
-    return render_template('register.html')
+    return jsonify({
+        "message": "Registration successful! Please login.",
+        "redirect": url_for('login')
+        })
+
 
 
 # Profile (require the user to login)
 @app.route('/profile')
 @login_required
 def profile():
-    return render_template('profile.html', user=current_user)
+    return jsonify({
+        "message": "Welcome to your profile.",
+        "user": {
+            "id": current_user.id,
+            "username": current_user.username,
+            "email": current_user.email,
+            "profile_picture": current_user.profile_picture
+        }
+    })
 
 
 # route for password reset
-@app.route('/reset_password_request', methods=['GET', 'POST'])
+@app.route('/reset_password_request', methods=['POST'])
 def reset_password_request():
-    if request.method == 'POST':
-        user = User.query.filter_by(email=request.form['email']).first()
-        if user:
-            token = user.get_reset_password_token()
-            send_password_reset_email(user, token)
-            flash(f"An email has been sent to {user.email} with instructions to reset your password.", 'info')
-        else:
-            flash('Email address not found.', 'error')
-        return redirect(url_for('login'))
-    return render_template('reset_password_request.html')
+    data = request.get_json()
+    email = data.get('email')
+    if not email:
+        return jsonify({"message": "Email is required."})
+    
+    user = User.query.filter_by(email=email).first()
+    if user:
+        token = user.get_reset_token()
+        send_password_reset_email(user, token)
+        return jsonify({"message": f"An email has been sent to {user.email} with instructions to reset your password."})
+    else:
+        return jsonify({"message": "Email address not found."})
 
 
 # route for password reset token
-@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+@app.route('/reset_password/<token>', methods=['POST'])
 def reset_password(token):
     if current_user.is_authenticated:
-        return redirect(url_for('index'))
-    user = User.verify_reset_password_token(token)
+        return jsonify({"message": "You are already logged in."})
+
+    user = User.verify_reset_token(token)
     if not user:
-        return redirect(url_for('index'))
-    if request.method == 'POST':
-        user.set_password(request.form['password'])
-        db.session.commit()
-        flash('Your password has been reset.', 'success')
-        return redirect(url_for('login'))
-    return render_template('reset_password.html')
+        return jsonify({"message": "Invalid or expired token."})
+
+    data = request.get_json()
+    password = data.get('password')
+    if not password:
+        return jsonify({"message": "Invalid password."})    
+
+    user.set_password(password)
+    db.session.commit()
+    return jsonify({"message": "Your password has been reset successfully."})
 
 
 # route for uploading profile picture
-@app.route('/upload_picture', methods=['GET', 'POST'])
+@app.route('/upload_picture', methods=['POST'])
 def upload_picture():
-    if request.method == 'POST' and 'photo' in request.files:
+    if 'photo' in request.files:
         filename = photos.save(request.files['photo'])
-        user = user.query.filter_by(id=current_user.id).first()
+        user = User.query.filter_by(id=current_user.id).first()
         current_user.profile_picture = filename
         db.session.commit()
-        flash('Profile picture uploaded.', 'success')
-        return redirect(url_for('profile'))
-    return render_template('upload_picture.html')
-
+        return jsonify({"message": "Profile picture uploaded successfully."})
+    else:
+        return jsonify({"message": "No file selected."})
+ 
 
 # Logout 
-@app.route('/logout')
+@app.route('/logout', methods=['POST'])
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for('login'))
+    return jsonify({"message": "Logged out successfully."})
 
 
-@app.route('/note/create', methods=['GET', 'POST'])
+@app.route('/note/create', methods=['POST'])
 @login_required
 def create_note():
-    if request.method == 'POST':
-        title = request.form['title']
-        content = request.form['content']
-        new_note = Note(title=title, content=content, user_id=current_user.id)
-        db.session.add(new_note)
-        db.session.commit()
-        flash('Note created successfully.', 'success')
-        return redirect(url_for('profile'))
-    return render_template('create_note.html')
+    data = request.get_json()
+    title = data.get('title')
+    content = data.get('content')
+    if not title or not content:
+        return jsonify({"message": "Title and content are required."})
+    
+    new_note = Note(title=title, content=content, user_id=current_user.id)
+    db.session.add(new_note)
+    db.session.commit()
+    return jsonify({"message": "Note created successfully."})
 
 
-@app.route('/note/<int:note_id>')
+@app.route('/note/<int:note_id>', methods=['GET'])
 @login_required
 def view_note(note_id):
     note = Note.query.get(note_id)
-    if note.user_id != current_user.id:
-        flash('You are not authorized to view this note.', 'error')
-    return render_template('view_note.html', note=note)
+    if note and note.user_id == current_user.id:
+        return jsonify({
+            "id": note.id,
+            "title": note.title,
+            "content": note.content,
+        })
+    else:
+        return jsonify({"message": "Note not found."})
+    
 
-
-@app.route('/note/<int:note_id>/edit', methods=['GET', 'POST'])
+@app.route('/note/<int:note_id>/edit', methods=['PUT'])
 @login_required
 def edit_note(note_id):
     note = Note.query.get(note_id)
-    if note.user_id != current_user.id:
-        flash('You are not authorized to edit this note.', 'error')
-        return redirect(url_for('view_note', note_id=note.id))
-    if request.method == 'POST':
-        note.content = request.form['content']
-        db.session.commit()
-        flash('Your note has been updated successfully.')
-        return redirect(url_for('view_note', note_id=note.id))
-    return render_template('edit_note.html', note=note)
+    if note and note.user_id != current_user.id:
+        return jsonify({"message": "You are not authorized to edit this note."})
+    
+    data = request.get_json()
+    content = data.get('content')
+    if not content:
+        return jsonify({"message": "Content is required."})
+    
+    note.content = content
+    db.session.commit()
+    return jsonify({"message": "Note updated successfully."})
 
 
-@app.route('/note/<int:note_id>/delete', methods=['POST'])
+@app.route('/note/<int:note_id>/delete', methods=['DELETE'])
 @login_required
 def delete_note(note_id):
     note = Note.query.get(note_id)
-    if note.user_id != current_user.id:
-        flash('You are not authorized to delete this note.', 'error')
+    if note and note.user_id != current_user.id:
+        return jsonify({"message": "You are not authorized to delete this note."})
+
     db.session.delete(note)
     db.session.commit()
-    flash('Note deleted successfully.')
-    return redirect(url_for('index'))
+    return jsonify({"message": "Note deleted successfully."})
 
 #development server for running the application
 if __name__ == '__main__':
