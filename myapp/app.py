@@ -1,6 +1,5 @@
 #main codes to run the application
 
-from crypt import methods
 from flask import Flask, flash, jsonify, redirect, url_for, request
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
