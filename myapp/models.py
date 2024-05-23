@@ -39,7 +39,7 @@ def verify_reset_token(token):
 
 
 class Note(db.model):
-    id = db.COlumn(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
     date_posted = db.Column(db.DateTime, index=True, default=datetime.utcnow)
